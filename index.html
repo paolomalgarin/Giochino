@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Game</title>
+    <link rel="shortcut icon" href="./img/player1/squid/sprite1.png" type="image/x-icon">
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div id="host-lives"></div>
+    <div id="guest-lives"></div>
+    <div id="turn">
+        <div class="showHideMoves" onclick="showHideMoves()">i</div>
+    </div>
+
+    <main>
+        <!-- <div id="current-mode"></div> -->
+
+        <div id="mode-selector">
+            <div id="host" class="btn" onclick="setMode('host')">Crea Partita</div>
+            <div id="guest" class="btn" onclick="setMode('guest')">Join Partita</div>
+        </div>
+
+        <div id="host-cmds">
+            <h2 class="title">Crea partita</h2>
+            <div class="instructions">
+                Come Host, creerai una partita e condividerai il codice con il tuo amico.<br>
+                <ol>
+                    <li>Clicca "Genera Codice Invito"</li>
+                    <li>Condividi il codice generato con il tuo amico</li>
+                    <li>Incolla la risposta che riceverai</li>
+                    <li>Clicca "Conferma Risposta" per iniziare a giocare</li>
+                </ol>
+            </div>
+
+
+            <div class="gen-offer btn" onclick="createHost()">Genera Codice Invito</div>
+            <div class="code-area">
+                <textarea id="copy-offer" cols="30" rows="10" maxlength="0" placeholder="Codice invito"></textarea>
+                <button id="copy-offer-btn" class="btn copy-btn" onclick="copyText(Event, 'copy-offer')">Copia</button>
+            </div>
+            <textarea id="paste-answer" cols="30" rows="10" placeholder="Incollare qui la risposta ↓"></textarea>
+            <div class="proc-answer btn" onclick="processAnswer(document.getElementById('paste-answer').value)">Conferma
+                Risposta</div>
+        </div>
+
+
+        <div id="guest-cmds">
+            <h2 class="title">Unisciti a una partita</h2>
+            <div class="instructions">
+                Come Guest, inserisci il codice che ti ha fornito l'host.<br>
+                <ol>
+                    <li>Incolla il codice ricevuto dall'host</li>
+                    <li>Clicca "Unisciti alla Partita"</li>
+                    <li>Copia il codice di risposta generato</li>
+                    <li>Invia la risposta all'host.</li>
+                </ol>
+            </div>
+
+
+            <textarea id="paste-offer" cols="30" rows="10"></textarea>
+            <div class="acc-offer btn" onclick="createGuest(document.getElementById('paste-offer').value)">Accept Offer
+            </div>
+            <div class="code-area">
+                <textarea id="copy-answer" cols="30" rows="5" maxlength="0" placeholder="Codice di risposta"></textarea>
+                <button id="copy-answer-btn" class="btn copy-btn"
+                    onclick="copyText(Event, 'copy-answer')">Copia</button>
+            </div>
+        </div>
+
+        <div id="game-container">
+
+        </div>
+    </main>
+
+
+    <script src="js/app.js"></script>
+    <script>
+        function copyText(e, id) {
+            const toCopy = document.getElementById(id);
+            const text = toCopy.value || toCopy.innerText || "";
+
+            // Prima prova con la nuova API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showCopied(toCopy, text);
+                }).catch(err => {
+                    console.warn("Clipboard API non disponibile, fallback...", err);
+                    fallbackCopyText(toCopy, text);
+                });
+            } else {
+                // Fallback diretto
+                fallbackCopyText(toCopy, text);
+            }
+        }
+
+        function fallbackCopyText(toCopy, text) {
+            const tempInput = document.createElement("textarea");
+            tempInput.value = text;
+            tempInput.style.position = "fixed";
+            tempInput.style.left = "-9999px";
+            tempInput.style.top = "-9999px";
+            document.body.appendChild(tempInput);
+
+            tempInput.focus();
+            tempInput.select();
+
+            try {
+                const ok = document.execCommand("copy");
+                if (!ok) throw new Error("execCommand copy failed");
+            } catch (err) {
+                console.error("Copy fallback error:", err);
+            }
+
+            document.body.removeChild(tempInput);
+            showCopied(toCopy, text);
+        }
+
+        function showCopied(toCopy, originalText) {
+            const oldVal = toCopy.value;
+            toCopy.value = "Copiato!";
+            setTimeout(() => {
+                toCopy.value = oldVal;
+            }, 1000);
+        }
+
+    </script>
+</body>
+
+</html>

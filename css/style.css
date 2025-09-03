@@ -1,0 +1,299 @@
+@import url('./animations.css');
+
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    min-width: 100vw;
+    box-sizing: border-box;
+
+    & main {
+        background-color: #eee;
+        width: min(900px, 95vw);
+        min-height: min(500px, 95vh);
+        border-radius: 20px;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        padding: 10px;
+        box-sizing: border-box;
+        box-shadow: 3px 3px 40px#000;
+
+        & #current-mode {
+            position: absolute;
+            right: 10px;
+            top: 5px;
+        }
+
+        & #mode-selector {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            left: 0;
+            top: 0;
+            box-sizing: border-box;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        & #host-cmds {
+            display: none;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        & #guest-cmds {
+            display: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            left: 0;
+            top: 0;
+            box-sizing: border-box;
+            padding: 10px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+
+        & .code-area {
+            position: relative;
+
+            & textarea {
+                width: 100%;
+                height: 100%;
+            }
+
+            & .copy-btn {
+                position: absolute;
+                bottom: 5px;
+                right: 5px;
+            }
+        }
+
+        & #game-container {
+            width: 100%;
+            background-color: #fff;
+            aspect-ratio: 1 / 1;
+            /* display: flex; */
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            display: none;
+            border: solid 1px #000;
+
+            & .cell {
+                width: 12.5%;
+                aspect-ratio: 1 / 1;
+                background-image: url('../img/generic/tiles/sprite1.png');
+                background-repeat: no-repeat;
+                background-size: cover;
+                position: relative;
+                image-rendering: pixelated;
+
+                &.tile {
+                    &.p1 {
+                        &.tileType1 {
+                            animation: p1tile1 1s linear 1 forwards;
+                        }
+
+                        &.tileType2 {
+                            animation: p1tile2 1s linear 1 forwards;
+                        }
+
+                        &.tileType3 {
+                            animation: p1tile3 1s linear 1 forwards;
+                        }
+
+                        &.tileType4 {
+                            animation: p1tile4 1s linear 1 forwards;
+                        }
+
+                        &.tileTypeFull {
+                            background-image: url('../img/player1/tiles/full.png');
+                        }
+                    }
+
+                    &.p2 {
+                        &.tileType1 {
+                            animation: p2tile1 1s linear 1 forwards;
+                        }
+
+                        &.tileType2 {
+                            animation: p2tile2 1s linear 1 forwards;
+                        }
+
+                        &.tileType3 {
+                            animation: p2tile3 1s linear 1 forwards;
+                        }
+
+                        &.tileType4 {
+                            animation: p2tile4 1s linear 1 forwards;
+                        }
+
+                        &.tileTypeFull {
+                            background-image: url('../img/player2/tiles/full.png');
+                        }
+                    }
+                }
+
+
+                &::before {
+                    background-repeat: no-repeat;
+                    background-size: cover;
+                    image-rendering: pixelated;
+
+                    width: 80%;
+                    height: 80%;
+                    display: block;
+                    content: '';
+                    position: absolute;
+                    left: 10%;
+                    top: 10%;
+                }
+
+                &.hideMoves::before {
+                    display: none;
+                }
+
+                &.shootable {
+                    &::before {
+                        background-color: #61a1d465;
+                        background-image: url('../img/generic/icons/shoot.png');
+                    }
+                }
+
+                &.walkable {
+                    &::before {
+                        background-color: #61a1d465;
+                        background-image: url('../img/generic/icons/walk.png');
+                    }
+                }
+
+                &.shoot-and-walk {
+                    &::before {
+                        background-color: #61a1d465;
+                        background-image: url('../img/generic/icons/shoot-walk.png');
+                    }
+                }
+
+                &::after {
+                    background-repeat: no-repeat;
+                    background-size: cover;
+                    image-rendering: pixelated;
+
+                    width: 100%;
+                    height: 100%;
+                    display: block;
+                    content: '';
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                }
+
+
+                &.player1 {
+                    &::after {
+                        animation: character1Animation 1s linear infinite;
+                    }
+
+                    &.squid {
+                        &::after {
+                            animation: character1SquidAnimation 1s linear infinite;
+                        }
+                    }
+
+                    &.invisible {
+                        &::after {
+                            display: none;
+                        }
+                    }
+                }
+
+                &.player2 {
+                    &::after {
+                        animation: character2Animation 1s linear infinite;
+                    }
+
+                    &.squid {
+                        &::after {
+                            animation: character2SquidAnimation 1s linear infinite;
+                        }
+                    }
+
+                    &.invisible {
+                        &::after {
+                            display: none;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    & #host-lives {
+        position: fixed;
+        top: 5px;
+        left: 5px;
+        z-index: 100;
+    }
+
+    & #guest-lives {
+        position: fixed;
+        bottom: 5px;
+        right: 5px;
+        z-index: 100;
+    }
+
+    & #turn {
+        position: fixed;
+        bottom: 5px;
+        left: 5px;
+        z-index: 100;
+        background-color: #f54343;
+        border: solid 1px #000;
+        width: 40px;
+        height: 40px;
+        display: none;
+        border-radius: 50%;
+
+        &.true {
+            background-color: #43f552;
+        }
+
+        &.false {
+            background-color: #f54343;
+        }
+    }
+}
+
+.btn {
+    box-sizing: border-box;
+    padding: 5px;
+    border-radius: 5px;
+    border: solid 2px #000;
+    width: fit-content;
+    cursor: pointer;
+    user-select: none;
+    display: inline-block;
+    box-shadow: 1px 1px 3px#000;
+}
+
+textarea {
+    display: block;
+
+    &::-webkit-scrollbar {
+        width: 0;
+    }
+}
