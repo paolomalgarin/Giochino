@@ -1,1 +1,4 @@
 # Giochino
+
+
+⚠️DESKTOP ONLY⚠️

@@ -11,15 +11,32 @@
 </head>
 
 <body>
-    <div id="host-lives"></div>
-    <div id="guest-lives"></div>
+    <div class="messages">
+        <div id="win-message" class=""></div>
+    </div>
+
+
+    <div id="host-lives" class="lives-container"></div>
+    <div id="guest-lives" class="lives-container"></div>
     <div id="turn">
         <div class="showHideMoves" onclick="showHideMoves()">i</div>
     </div>
 
-    <main>
-        <!-- <div id="current-mode"></div> -->
 
+    <div class="background">
+        <div class="blob-container">
+            <div class="blobs_1"></div>
+            <div class="blobs_2"></div>
+            <div class="blobs_3"></div>
+            <div class="blobs_4"></div>
+            <div class="blobs_5"></div>
+            <div class="blobs_6"></div>
+            <div class="blobs_7"></div>
+        </div>
+    </div>
+
+
+    <main>
         <div id="mode-selector">
             <div id="host" class="btn" onclick="setMode('host')">Crea Partita</div>
             <div id="guest" class="btn" onclick="setMode('guest')">Join Partita</div>

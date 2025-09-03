@@ -7,6 +7,7 @@
     49% {
         background-image: url('../img/player1/sprite1.png');
     }
+
     50% {
         background-image: url('../img/player1/sprite2.png');
     }
@@ -15,10 +16,12 @@
     99% {
         background-image: url('../img/player1/sprite2.png');
     }
+
     100% {
         background-image: url('../img/player1/sprite1.png');
     }
 }
+
 @keyframes character1SquidAnimation {
     0% {
         background-image: url('../img/player1/squid/sprite1.png');
@@ -28,6 +31,7 @@
     49% {
         background-image: url('../img/player1/squid/sprite1.png');
     }
+
     50% {
         background-image: url('../img/player1/squid/sprite2.png');
     }
@@ -36,6 +40,7 @@
     99% {
         background-image: url('../img/player1/squid/sprite2.png');
     }
+
     100% {
         background-image: url('../img/player1/squid/sprite1.png');
     }
@@ -51,6 +56,7 @@
     49% {
         background-image: url('../img/player2/sprite1.png');
     }
+
     50% {
         background-image: url('../img/player2/sprite2.png');
     }
@@ -59,10 +65,12 @@
     99% {
         background-image: url('../img/player2/sprite2.png');
     }
+
     100% {
         background-image: url('../img/player2/sprite1.png');
     }
 }
+
 @keyframes character2SquidAnimation {
     0% {
         background-image: url('../img/player2/squid/sprite1.png');
@@ -72,6 +80,7 @@
     49% {
         background-image: url('../img/player2/squid/sprite1.png');
     }
+
     50% {
         background-image: url('../img/player2/squid/sprite2.png');
     }
@@ -80,6 +89,7 @@
     99% {
         background-image: url('../img/player2/squid/sprite2.png');
     }
+
     100% {
         background-image: url('../img/player2/squid/sprite1.png');
     }
@@ -94,66 +104,85 @@
     0% {
         background-image: url('../img/player1/tiles/bullet.png');
     }
+
     49% {
         background-image: url('../img/player1/tiles/bullet.png');
     }
+
     50% {
         background-image: url('../img/player1/tiles/sprite1.png');
     }
+
     99% {
         background-image: url('../img/player1/tiles/sprite1.png');
     }
+
     100% {
         background-image: url('../img/player1/tiles/full.png');
     }
 }
+
 @keyframes p1tile2 {
     0% {
         background-image: url('../img/player1/tiles/bullet.png');
     }
+
     49% {
         background-image: url('../img/player1/tiles/bullet.png');
     }
+
     50% {
         background-image: url('../img/player1/tiles/sprite2.png');
     }
+
     99% {
         background-image: url('../img/player1/tiles/sprite2.png');
     }
+
     100% {
         background-image: url('../img/player1/tiles/full.png');
     }
 }
+
 @keyframes p1tile3 {
     0% {
         background-image: url('../img/player1/tiles/bullet.png');
     }
+
     49% {
         background-image: url('../img/player1/tiles/bullet.png');
     }
+
     50% {
         background-image: url('../img/player1/tiles/sprite3.png');
     }
+
     99% {
         background-image: url('../img/player1/tiles/sprite3.png');
     }
+
     100% {
         background-image: url('../img/player1/tiles/full.png');
     }
 }
+
 @keyframes p1tile4 {
     0% {
         background-image: url('../img/player1/tiles/bullet.png');
     }
+
     49% {
         background-image: url('../img/player1/tiles/bullet.png');
     }
+
     50% {
         background-image: url('../img/player1/tiles/sprite4.png');
     }
+
     99% {
         background-image: url('../img/player1/tiles/sprite4.png');
     }
+
     100% {
         background-image: url('../img/player1/tiles/full.png');
     }
@@ -167,67 +196,120 @@
     0% {
         background-image: url('../img/player2/tiles/bullet.png');
     }
+
     49% {
         background-image: url('../img/player2/tiles/bullet.png');
     }
+
     50% {
         background-image: url('../img/player2/tiles/sprite1.png');
     }
+
     99% {
         background-image: url('../img/player2/tiles/sprite1.png');
     }
+
     100% {
         background-image: url('../img/player2/tiles/full.png');
     }
 }
+
 @keyframes p2tile2 {
     0% {
         background-image: url('../img/player2/tiles/bullet.png');
     }
+
     49% {
         background-image: url('../img/player2/tiles/bullet.png');
     }
+
     50% {
         background-image: url('../img/player2/tiles/sprite2.png');
     }
+
     99% {
         background-image: url('../img/player2/tiles/sprite2.png');
     }
+
     100% {
         background-image: url('../img/player2/tiles/full.png');
     }
 }
+
 @keyframes p2tile3 {
     0% {
         background-image: url('../img/player2/tiles/bullet.png');
     }
+
     49% {
         background-image: url('../img/player2/tiles/bullet.png');
     }
+
     50% {
         background-image: url('../img/player2/tiles/sprite3.png');
     }
+
     99% {
         background-image: url('../img/player2/tiles/sprite3.png');
     }
+
     100% {
         background-image: url('../img/player2/tiles/full.png');
     }
 }
+
 @keyframes p2tile4 {
     0% {
         background-image: url('../img/player2/tiles/bullet.png');
     }
+
     49% {
         background-image: url('../img/player2/tiles/bullet.png');
     }
+
     50% {
         background-image: url('../img/player2/tiles/sprite4.png');
     }
+
     99% {
         background-image: url('../img/player2/tiles/sprite4.png');
     }
+
     100% {
         background-image: url('../img/player2/tiles/full.png');
+    }
+}
+
+
+
+@keyframes endMessage {
+    0% {
+        width: 0;
+        height: 0;
+        left: 0px;
+        top: 100vh;
+        font-size: 1px;
+    }
+    45% {
+        top: 30vh;
+    }
+    65% {
+        width: 10px;
+        height: 10px;
+        top: 10vh;
+        left: 40vw;
+        font-size: 1px;
+    }
+    95% {
+        width: 10px;
+        height: 10px;
+    }
+    100% {
+        width: 40vw;
+        height: 20vw;
+        left: 50vw;
+        top: 50vh;
+        font-size: 5vw;
+        padding: 4vw;
     }
 }

@@ -82,7 +82,18 @@ async function generateOffer() {
     const localDesc = await offerPromise;
 
     // Generiamo JSON che il player userà
-    const offerJSON = JSON.stringify({ peerId: crypto.randomUUID(), sdp: localDesc }, null, 2);
+    function generateUUID() {
+        // Simple fallback UUID v4 generator
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+
+    // const offerJSON = JSON.stringify({ peerId: (crypto.randomUUID ? crypto.randomUUID() : generateUUID()), sdp: localDesc }, null, 2);
+    const offerJSON = JSON.stringify({ peerId: (crypto.randomUUID ? crypto.randomUUID() : generateUUID()), sdp: localDesc });
     return { pc, dc, offerJSON };
 }
 
@@ -344,8 +355,24 @@ function drawGame() {
         }
 
 
-    document.getElementById('host-lives').innerText = 'Host lives: ' + App.game.players.p1.lives;
-    document.getElementById('guest-lives').innerText = 'Guest lives: ' + App.game.players.p2.lives;
+    let lifeFull = '<div class="life full"></div>';
+    let lifeEmpty = '<div class="life empty"></div>';
+    const hostLives = document.getElementById('host-lives'); // innerText = 'Host lives: ' + App.game.players.p1.lives;
+    const guestLives = document.getElementById('guest-lives'); // innerText = 'Guest lives: ' + App.game.players.p2.lives;
+
+    hostLives.innerHTML = '';
+    for (let i = 0; i < 3; i++)
+        if (i < App.game.players.p1.lives)
+            hostLives.innerHTML += lifeFull;
+        else
+            hostLives.innerHTML += lifeEmpty;
+
+    guestLives.innerHTML = '';
+    for (let i = 0; i < 3; i++)
+        if (i < App.game.players.p2.lives)
+            guestLives.innerHTML += lifeFull;
+        else
+            guestLives.innerHTML += lifeEmpty;
 }
 
 
@@ -654,5 +681,15 @@ async function playGame() {
             sendMessage(JSON.stringify(App));
 
         }
+
+        const winMessage = document.getElementById('win-message');
+        
+        document.getElementById('win-message').className = '';
+        winMessage.classList.add(App.game.players.p2.lives <= 0 ? (App.game.players.p1.lives > 0 ? 'orange' : 'draw') : 'green');
+        winMessage.classList.add('animate');
+
+        winMessage.addEventListener('click', (e) => {
+            document.getElementById('win-message').className = 'deanimate';
+        }, { once: true });
     }
 }
