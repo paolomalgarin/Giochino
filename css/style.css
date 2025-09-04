@@ -306,23 +306,31 @@ body {
     }
 
     & #host-lives {
+        --ammo: 100%;
+
         position: fixed;
         top: 5px;
         left: 5px;
         z-index: 100;
         box-shadow: 1px 1px 3px #F0701A;
+        border: solid 1px #F0701A;
         background-color: #F0701A;
+        background: linear-gradient(180deg, rgba(163, 194, 85, 0) calc(100% - var(--ammo)), #F0701A calc(100% - var(--ammo)), #F0701A 100%);
         padding: 2px;
         border-radius: 5px;
     }
 
     & #guest-lives {
+        --ammo: 100%;
+
         position: fixed;
         bottom: 5px;
         right: 5px;
         z-index: 100;
         box-shadow: 1px 1px 3px #6EA84A;
+        border: solid 1px #6EA84A;
         background-color: #6EA84A;
+        background: linear-gradient(180deg, rgba(163, 194, 85, 0) calc(100% - var(--ammo)), rgba(110, 168, 74, 1) calc(100% - var(--ammo)), rgba(110, 168, 74, 1) 100%);
         padding: 2px;
         border-radius: 5px;
     }
@@ -366,6 +374,25 @@ body {
 
         &.false {
             background-color: #f54343;
+        }
+    }
+
+    #show-hide-moves {
+        position: fixed;
+        top: 5px;
+        right: 5px;
+        z-index: 100;
+        background-color: #e3e3e3;
+        border: solid 1px #000;
+        background-image: url('../img/generic/icons/hide.png');
+        width: 20px;
+        height: 20px;
+        background-size: contain;
+        cursor: pointer;
+        border-radius: 5px;
+
+        &.show {
+            background-image: url('../img/generic/icons/show.png');
         }
     }
 }

@@ -1,5 +1,9 @@
 const ICE_SERVERS = [
-    { urls: "stun:stun.l.google.com:19302" }
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
 ]; // Puoi mettere STUN se vuoi
 const SIZE = 8; // Dimensioni field
 const App = {
@@ -16,14 +20,17 @@ const App = {
                 i: 0,
                 j: 0,
                 lives: 3,
+                ammo: 3,
             },
             p2: {
                 isSquid: false,
                 i: SIZE - 1,
                 j: SIZE - 1,
                 lives: 3,
+                ammo: 3,
             },
         },
+        maxAmmo: 3,
         running: false,
     }
 };
@@ -239,15 +246,22 @@ function resetGame() {
                 i: 0,
                 j: 0,
                 lives: 3,
+                ammo: 3,
             },
             p2: {
                 isSquid: false,
                 i: SIZE - 1,
                 j: SIZE - 1,
                 lives: 3,
+                ammo: 3,
             },
         },
+        maxAmmo: 3,
+        running: true,
     }
+    App.game.players.p1.ammo = App.game.maxAmmo;
+    App.game.players.p2.ammo = App.game.maxAmmo;
+
     App.game.field[0][0] = 1;
     App.game.field[SIZE - 1][SIZE - 1] = -1;
 
@@ -373,6 +387,10 @@ function drawGame() {
             guestLives.innerHTML += lifeFull;
         else
             guestLives.innerHTML += lifeEmpty;
+
+
+    hostLives.style.setProperty('--ammo', ((App.game.players.p1.ammo / App.game.maxAmmo) * 100) + '%');
+    guestLives.style.setProperty('--ammo', ((App.game.players.p2.ammo / App.game.maxAmmo) * 100) + '%');
 }
 
 
@@ -538,6 +556,7 @@ function showHideMoves() {
         for (let j = 0; j < SIZE; j++) {
             App.game.cells[i][j].classList.toggle('hideMoves');
         }
+    document.getElementById('show-hide-moves').classList.toggle('show');
 }
 
 
@@ -555,6 +574,7 @@ function waitForCellClick() {
 
                 // pointerdown cattura sinistro/medio/destro e funziona bene anche su touch
                 const onPointerDown = (ev) => {
+                    ev.stopPropagation();
                     // ev.button: 0 = sinistro, 1 = centrale, 2 = destro
                     const btn = ev.button;
                     const currentPlayer = App.mode === 'host' ? App.game.players.p1 : App.game.players.p2;
@@ -563,6 +583,7 @@ function waitForCellClick() {
 
 
                     // se è click sinistro e la cella è occupata, ignora
+                    if (btn === 0 && currentPlayer.ammo <= 0) return;
                     if (btn !== 0 && (((enemyPlayer.i == i && enemyPlayer.j == j)) || ((currentPlayer.i == i && currentPlayer.j == j) && currentPlayer.isSquid))) return;
                     if (btn === 0 && App.game.field[i][j] == (App.mode == 'host' ? 1 : -1)) return;
                     if (!(isCellInArray(i, j, getNearbyCells(currentPlayer.i, currentPlayer.j)) || (currentPlayer.i == i && currentPlayer.j == j)) && btn === 0) return;
@@ -581,7 +602,7 @@ function waitForCellClick() {
                 };
 
                 cell.addEventListener('pointerdown', onPointerDown);
-                cell.addEventListener('contextmenu', onContextMenu);
+                cell.addEventListener('contextmenu', onContextMenu, { capture: true });
 
                 handlers.push({ elem: cell, evType: 'pointerdown', fn: onPointerDown });
                 handlers.push({ elem: cell, evType: 'contextmenu', fn: onContextMenu });
@@ -627,9 +648,13 @@ async function playGame() {
             if (btn == 0) {
                 App.game.field[i][j] = val;
 
-                if (App.mode === 'host') App.game.players.p1.isSquid = false;
-                else App.game.players.p2.isSquid = false;
-
+                if (App.mode === 'host') {
+                    App.game.players.p1.isSquid = false;
+                    App.game.players.p1.ammo -= 1;
+                } else {
+                    App.game.players.p2.isSquid = false;
+                    App.game.players.p2.ammo -= 1;
+                }
 
                 if (i === enemyPlayer.i && j === enemyPlayer.j && App.game.field[enemyPlayer.i][enemyPlayer.j] === val) {
                     if (App.mode === 'host')
@@ -645,10 +670,16 @@ async function playGame() {
                     App.game.players.p1.i = i;
                     App.game.players.p1.j = j;
                     App.game.players.p1.isSquid = true;
+
+                    if (App.game.field[i][j] == val)
+                        App.game.players.p1.ammo = App.game.maxAmmo;
                 } else {
                     App.game.players.p2.i = i;
                     App.game.players.p2.j = j;
                     App.game.players.p2.isSquid = true;
+
+                    if (App.game.field[i][j] == val)
+                        App.game.players.p2.ammo = App.game.maxAmmo;
                 }
             }
 
@@ -683,7 +714,7 @@ async function playGame() {
         }
 
         const winMessage = document.getElementById('win-message');
-        
+
         document.getElementById('win-message').className = '';
         winMessage.classList.add(App.game.players.p2.lives <= 0 ? (App.game.players.p1.lives > 0 ? 'orange' : 'draw') : 'green');
         winMessage.classList.add('animate');
