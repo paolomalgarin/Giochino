@@ -1,13 +1,6 @@
-const ICE_SERVERS = [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun3.l.google.com:19302" },
-    { urls: "stun:stun4.l.google.com:19302" },
-]; // Puoi mettere STUN se vuoi
 const SIZE = 8; // Dimensioni field
 const App = {
-    mode: null,   // 'host' o 'guest'
+    mode: 'host',   // 'host' o 'guest'
     host: null,
     guest: null,
     game: {
@@ -40,199 +33,9 @@ const AppLocal = {
 
 
 
-function encodeOffer(offerJSON) {
-    // parse → tieni solo i campi minimi → string compatta → base64
-    const obj = JSON.parse(offerJSON);
-    const compact = JSON.stringify({
-        id: obj.peerId,       // rinominato "peerId" in "id"
-        s: obj.sdp.sdp,       // tieni solo la stringa SDP, senza type
-        t: obj.sdp.type       // aggiungi comunque il type per sicurezza
-    });
-    return btoa(compact); // Base64 finale
-}
-
-function decodeOffer(code) {
-    const decoded = atob(code);
-    const obj = JSON.parse(decoded);
-    // ricostruisci lo stesso schema dell’offer originale
-    return JSON.stringify({
-        peerId: obj.id,
-        sdp: {
-            type: obj.t,
-            sdp: obj.s
-        }
-    });
-}
 
 
 
-// ---- GENERATE OFFER (Host) ----
-async function generateOffer() {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-    const dc = pc.createDataChannel('game');
-
-    dc.onopen = () => {
-        onDataChannelOpen();
-    }
-    dc.onmessage = e => manageHostMessages(e);
-
-    // Questo array serve a "ritardare" fino a che ICE non è pronto
-    const offerPromise = new Promise(resolve => {
-        pc.onicecandidate = ev => {
-            if (!ev.candidate) resolve(pc.localDescription);
-        };
-    });
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-
-    const localDesc = await offerPromise;
-
-    // Generiamo JSON che il player userà
-    function generateUUID() {
-        // Simple fallback UUID v4 generator
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            const r = Math.random() * 16 | 0;
-            const v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    }
-
-
-    // const offerJSON = JSON.stringify({ peerId: (crypto.randomUUID ? crypto.randomUUID() : generateUUID()), sdp: localDesc }, null, 2);
-    const offerJSON = JSON.stringify({ peerId: (crypto.randomUUID ? crypto.randomUUID() : generateUUID()), sdp: localDesc });
-    return { pc, dc, offerJSON };
-}
-
-// ---- ACCEPT OFFER (Player) ----
-async function acceptOffer(offerJSON) {
-    try {
-        const offerObj = JSON.parse(offerJSON);
-        const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-
-        pc.ondatachannel = ev => {
-            App.guest.dc = ev.channel; // 👈 salva direttamente
-            App.guest.dc.onopen = () => {
-                onDataChannelOpen();
-            }
-            App.guest.dc.onmessage = e => manageGuestMessages(e);
-        };
-
-        const answerPromise = new Promise(resolve => {
-            pc.onicecandidate = ev => {
-                if (!ev.candidate) resolve(pc.localDescription);
-            };
-        });
-
-        await pc.setRemoteDescription(offerObj.sdp);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-
-        const localDesc = await answerPromise;
-        const answerJSON = JSON.stringify({ peerId: offerObj.peerId, sdp: localDesc }, null, 2);
-
-        return { pc, answerJSON };
-    } catch (se) {
-        console.log('❌ Offer Json non valida (json mal formato)');
-        console.error(se);
-        return;
-    }
-}
-
-
-
-async function createHost() {
-    if (App.mode != 'host') {
-        console.log(`⚠️ Devi essere in modalità host [mode: ${App.mode}]`);
-        return;
-    }
-
-    console.log("=== Host genera offer ===");
-
-    App.host = await generateOffer();
-    let offer = encodeOffer(App.host.offerJSON);
-
-    const offerTArea = document.getElementById('copy-offer');
-    offerTArea && (offerTArea.value = offer);
-
-    console.log("Offer JSON:\n", offer);
-}
-
-async function createGuest(offerJSON) {
-    if (App.mode != 'guest') {
-        console.log(`⚠️ Devi essere in modalità guest [mode: ${App.mode}]`);
-        return;
-    }
-
-    offerJSON = decodeOffer(offerJSON);
-
-    console.log("\n=== Guest accetta offer ===");
-
-    App.guest = await acceptOffer(offerJSON);
-    let answer = App.guest.answerJSON;
-
-    const answerTArea = document.getElementById('copy-answer');
-    answerTArea && (answerTArea.value = answer);
-
-    console.log("Answer JSON:\n", answer);
-}
-
-async function processAnswer(answerJSON) {
-    if (App.mode != 'host') {
-        console.log(`⚠️ Devi essere in modalità host [mode: ${App.mode}]`);
-        return;
-    }
-
-    console.log("\n=== Host setta remote description (answer) ===");
-
-    await App.host.pc.setRemoteDescription(JSON.parse(answerJSON).sdp);
-}
-
-
-
-function sendMessage(msg) {
-    if (App.mode === 'host' && App.host?.dc?.readyState === "open") {
-        App.host.dc.send(msg);
-        console.log("Host manda:", msg);
-    } else if (App.mode === 'guest' && App.guest?.dc?.readyState === "open") {
-        App.guest.dc.send(msg);
-        console.log("Guest manda:", msg);
-    } else {
-        console.log("⚠️ DataChannel non è pronto per inviare messaggi");
-    }
-}
-
-
-
-
-
-// style stuff
-let hostCmds, guestCmds;
-
-window.onload = () => {
-    hostCmds = document.getElementById('host-cmds');
-    guestCmds = document.getElementById('guest-cmds');
-}
-
-function setMode(mode) {
-    App.mode = mode;
-    console.log("Modalità selezionata:", mode);
-
-    // Mostra/nascondi i comandi in base alla modalità
-    if (mode === 'host') {
-        hostCmds.style.display = 'flex';
-        guestCmds.style.display = 'none';
-    } else if (mode === 'guest') {
-        hostCmds.style.display = 'none';
-        guestCmds.style.display = 'flex';
-    }
-
-    const modeSelector = document.getElementById('mode-selector');
-    const curentModeDisplay = document.getElementById('current-mode');
-
-    modeSelector && modeSelector.parentNode && modeSelector.parentNode.removeChild(modeSelector);
-    curentModeDisplay && (curentModeDisplay.innerText = App.mode);
-}
 
 
 function resetGame() {
@@ -395,52 +198,6 @@ function drawGame() {
 
 
 
-function manageHostMessages(e) {
-    console.log("Host riceve:", e.data);
-
-    const newApp = JSON.parse(e.data);
-    App.game.field = newApp.game.field;
-    App.game.players = newApp.game.players;
-    App.game.running = newApp.game.running;
-
-    AppLocal.myTurn = true;
-
-    drawGame();
-}
-
-function manageGuestMessages(e) {
-    console.log("Host riceve:", e.data);
-
-    const newApp = JSON.parse(e.data);
-    App.game.field = newApp.game.field;
-    App.game.players = newApp.game.players;
-    App.game.running = newApp.game.running;
-
-    AppLocal.myTurn = true;
-
-    drawGame();
-}
-
-function onDataChannelOpen() {
-    if (App.mode == 'guest') {
-        console.log("Guest: DataChannel aperto!");
-    }
-
-    if (App.mode == 'host') {
-        console.log("Host: DataChannel aperto!");
-    }
-
-
-    let guestCmds = document.getElementById('guest-cmds');
-    let hostCmds = document.getElementById('host-cmds');
-    let gameField = document.getElementById('game-container');
-
-    guestCmds && guestCmds.parentNode && guestCmds.parentNode.removeChild(guestCmds);
-    hostCmds && hostCmds.parentNode && hostCmds.parentNode.removeChild(hostCmds);
-    gameField && (gameField.style.display = 'flex');
-
-    playGame();
-}
 
 
 function getNearbyCells(i, j, radius = 2) {
@@ -620,6 +377,7 @@ function waitForCellClick() {
 // versione async di playGame che usa waitForCellClick()
 async function playGame() {
     while (true) {
+        let turn = true;
         resetGame();
         drawGame();
         App.game.running = true;
@@ -629,75 +387,35 @@ async function playGame() {
             // se non è il mio turno, aspettiamo un po' e ricontrolliamo.
             // Quando arriva un messaggio dall'altro client, manage*Messages() imposterà App e AppLocal.myTurn = true;
             if (!AppLocal.myTurn) {
-                // piccolo sleep non bloccante
-                await new Promise(r => setTimeout(r, 100));
-                continue;
-            }
 
-            document.getElementById('turn').className = 'true';
+                const enemyMode = App.mode == 'host' ? 'guest' : 'host';
+                const { i, j, btn } = findBestMove(App.game);
 
-            // valori: host -> 1, guest -> -1
-            const val = App.mode === 'host' ? 1 : -1;
-            const currentPlayer = App.mode === 'host' ? App.game.players.p1 : App.game.players.p2;
-            const enemyPlayer = App.mode === 'host' ? App.game.players.p2 : App.game.players.p1;
+                await new Promise(r => setTimeout(r, 500));
 
-            // ======= qui entra il blocco che volevi =======
-            // attendo che l'utente clicchi una cella libera
-            const { i, j, btn } = await waitForCellClick();
-
-            if (btn == 0) {
-                App.game.field[i][j] = val;
-
-                if (App.mode === 'host') {
-                    App.game.players.p1.isSquid = false;
-                    App.game.players.p1.ammo -= 1;
-                } else {
-                    App.game.players.p2.isSquid = false;
-                    App.game.players.p2.ammo -= 1;
-                }
-
-                if (i === enemyPlayer.i && j === enemyPlayer.j && App.game.field[enemyPlayer.i][enemyPlayer.j] === val) {
-                    if (App.mode === 'host')
-                        App.game.players.p2.lives -= 1;
-                    else
-                        App.game.players.p1.lives -= 1;
-                }
+                makeMove(enemyMode, i, j, btn);
 
                 drawGame();
+                AppLocal.myTurn = true;
             } else {
-                // aggiorno la posizione del giocatore corrente
-                if (App.mode === 'host') {
-                    App.game.players.p1.i = i;
-                    App.game.players.p1.j = j;
-                    App.game.players.p1.isSquid = true;
 
-                    if (App.game.field[i][j] == val)
-                        App.game.players.p1.ammo = App.game.maxAmmo;
-                } else {
-                    App.game.players.p2.i = i;
-                    App.game.players.p2.j = j;
-                    App.game.players.p2.isSquid = true;
+                document.getElementById('turn').className = 'true';
 
-                    if (App.game.field[i][j] == val)
-                        App.game.players.p2.ammo = App.game.maxAmmo;
-                }
+                // ======= qui entra il blocco che volevi =======
+                // attendo che l'utente clicchi una cella libera
+                const { i, j, btn } = await waitForCellClick();
+
+                makeMove(App.mode, i, j, btn);
+
+
+                drawGame();
+
+                // disabilito il mio turno e ridisegno
+                AppLocal.myTurn = false;
+                document.getElementById('turn').className = 'false';
+                drawGame();
+                // ======= fine del blocco =======
             }
-
-
-            if (App.game.field[currentPlayer.i][currentPlayer.j] === (-1 * val)) {
-                if (App.mode === 'host')
-                    App.game.players.p1.lives -= 1;
-                else
-                    App.game.players.p2.lives -= 1;
-            }
-
-            drawGame();
-
-            // disabilito il mio turno e ridisegno
-            AppLocal.myTurn = false;
-            document.getElementById('turn').className = 'false';
-            drawGame();
-            // ======= fine del blocco =======
 
             // qui puoi aggiungere logica per controllare vittoria/fine partita
             if (App.game.players.p1.lives <= 0) {
@@ -707,13 +425,8 @@ async function playGame() {
                 App.game.running = false;
                 App.game.winner = 'Host (arancione)';
             }
-
-            // invio lo stato aggiornato all'altro peer
-            sendMessage(JSON.stringify(App));
-
         }
-
-
+        
         await new Promise(r => setTimeout(r, 2000));
 
         const winMessage = document.getElementById('win-message');
@@ -727,3 +440,60 @@ async function playGame() {
         }, { once: true });
     }
 }
+
+
+function makeMove(mode = 'host', i, j, btn) {
+    // valori: host -> 1, guest -> -1
+    const val = mode === 'host' ? 1 : -1;
+    const currentPlayer = mode === 'host' ? App.game.players.p1 : App.game.players.p2;
+    const enemyPlayer = mode === 'host' ? App.game.players.p2 : App.game.players.p1;
+
+    if (btn == 0) {
+        App.game.field[i][j] = val;
+
+        if (mode === 'host') {
+            App.game.players.p1.isSquid = false;
+            App.game.players.p1.ammo -= 1;
+        } else {
+            App.game.players.p2.isSquid = false;
+            App.game.players.p2.ammo -= 1;
+        }
+
+        if (i === enemyPlayer.i && j === enemyPlayer.j && App.game.field[enemyPlayer.i][enemyPlayer.j] === val) {
+            if (mode === 'host')
+                App.game.players.p2.lives -= 1;
+            else
+                App.game.players.p1.lives -= 1;
+        }
+
+        drawGame();
+    } else {
+        // aggiorno la posizione del giocatore corrente
+        if (mode === 'host') {
+            App.game.players.p1.i = i;
+            App.game.players.p1.j = j;
+            App.game.players.p1.isSquid = true;
+
+            if (App.game.field[i][j] == val)
+                App.game.players.p1.ammo = App.game.maxAmmo;
+        } else {
+            App.game.players.p2.i = i;
+            App.game.players.p2.j = j;
+            App.game.players.p2.isSquid = true;
+
+            if (App.game.field[i][j] == val)
+                App.game.players.p2.ammo = App.game.maxAmmo;
+        }
+    }
+
+
+    if (App.game.field[currentPlayer.i][currentPlayer.j] === (-1 * val)) {
+        if (mode === 'host')
+            App.game.players.p1.lives -= 1;
+        else
+            App.game.players.p2.lives -= 1;
+    }
+}
+
+
+playGame();
