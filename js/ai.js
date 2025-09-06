@@ -27,6 +27,7 @@ function evalField(game = JSON.parse(JSON.stringify(App.game)), memory = JSON.pa
         // realPlayer è un array di posizioni [{i,j}, ...]
         let totalEvaluation = 0
         for (const pos of realPlayerPos) {
+            // creiamo un nuovo gioco simulato per ogni posizione in cui il giocatore potrebbe essere e facciamo la media delle evaluation di ogniuno di quei games
             const newPossibleGame = JSON.parse(JSON.stringify(game));
             newPossibleGame.players.p1.i = pos.i;
             newPossibleGame.players.p1.j = pos.j;
@@ -62,15 +63,15 @@ function evalField(game = JSON.parse(JSON.stringify(App.game)), memory = JSON.pa
                     evaluation += 70;
                 }
 
-                if (!(realPlayer.isSquid && field[realPlayer.i][realPlayer.j] == realPlayerVal)) {
+                if (!(field[realPlayerPos.i][realPlayerPos.j] == botVal)) {
                     // se tocca l'altro player è visibile e il bot no è NO BRAINER
-                    evaluation += 1000
+                    evaluation += 300
                 }
             } else {
                 // sono visibile
 
                 // considero il caso in cui ho una sola vita (o meno) o l'altro portebbe colpirmi da invisibile
-                if (botPlayer.lives <= 1 || (realPlayer.isSquid && field[realPlayer.i][realPlayer.j] == realPlayerVal)) {
+                if (botPlayer.lives <= 1 || (realPlayer.isSquid && field[realPlayerPos.i][realPlayerPos.j] == realPlayerVal)) {
                     evaluation -= 200;
                 } else {
                     // ho piu di una vita
@@ -79,12 +80,8 @@ function evalField(game = JSON.parse(JSON.stringify(App.game)), memory = JSON.pa
                     if (botPlayer.ammo > 0 && realPlayer.ammo === 0) {
                         evaluation += (lastMove === 'bot' ? 0 : 70);
                     } else {
-                        // se tocca al bot ed è su una sua casella è NO BRAINER
-                        if (lastMove !== 'bot' && field[botPlayer.i][botPlayer.j] == botVal)
-                            evaluation += 1000;
-                        else
-                            // in genere è una situazione a vantaggio di chi ha più vite
-                            evaluation += botPlayer.lives - realPlayer.lives;
+                        // in genere è una situazione a vantaggio di chi ha più vite
+                        evaluation += botPlayer.lives - realPlayer.lives;
                     }
                 }
             }
@@ -96,7 +93,7 @@ function evalField(game = JSON.parse(JSON.stringify(App.game)), memory = JSON.pa
         } else if (field[botPlayer.i][botPlayer.j] == 0) {
             evaluation -= 10;
         } else {
-            evaluation -= 200;
+            evaluation -= 500;
         }
 
         // considero il caso in cui ho il serbatoio vuoto
@@ -116,7 +113,14 @@ function evalField(game = JSON.parse(JSON.stringify(App.game)), memory = JSON.pa
         // considero la grandezza del campo di movimento del bot
         evaluation += getPlayerColorOnlyMovableCells(botPlayer.i, botPlayer.j, botVal, field).length * 5;
 
-        // 
+        // considero il tipo di cella in cui è l'altro player
+        if (field[realPlayerPos.i][realPlayerPos.j] == botVal) {
+            evaluation += 500;
+        } else if (field[realPlayerPos.i][realPlayerPos.j] == 0) {
+            evaluation += 50;
+        } else {
+            evaluation -= 50;
+        }
 
     } else {
         // caso inatteso
@@ -173,9 +177,12 @@ function getPlayerColorOnlyMovableCells(i = MEMORY.lastPlayerPos.i, j = MEMORY.l
 
 
 function getRealPlayerPosition(game, memory) {
-    let player = game.players.p1;
+    const player = game.players.p1;
+    const field = game.field;
+    let isPlayerInvisible = player.isSquid && field[player.i][player.j] == 1;
 
-    if (player.isSquid && game.field[player.i][player.j] == 1) {
+    if (isPlayerInvisible) {
+        console.log('getRealPlayerPosition: player considered invisible, returning possible cells from memory.lastPlayerPos', memory.lastPlayerPos);
         return getPlayerMoovableCells(memory.lastPlayerPos.i, memory.lastPlayerPos.j);
     } else {
         memory.lastPlayerPos = { i: player.i, j: player.j };
@@ -222,10 +229,9 @@ function countAll(field) {
 // Usa getOrthogonalBlobIndices su ogni cella attorno a (i,j) (default MEMORY.lastPlayerPos)
 // Per ogni cella nel blob aggiunge anche le 8 adiacenti SOLO SE sono dello stesso valore 'val'; scarta duplicati con resultVisited.
 // Restituisce array di {i,j}
-function getPlayerMoovableCells(i = MEMORY.lastPlayerPos.i, j = MEMORY.lastPlayerPos.j, val = 1) {
+function getPlayerMoovableCells(i, j, val = 1, field = App.game.field) {
     const N = SIZE;
     const NN = N * N;
-    const field = App.game.field;
 
     // validazione semplice
     if (typeof i !== 'number' || typeof j !== 'number') return [];
@@ -369,11 +375,8 @@ function evaluateAllMoves(player = 'bot') {
     shootableCells.forEach(shCell => {
         const newPossibleGame = JSON.parse(JSON.stringify(App.game));
         newPossibleGame.field[shCell.i][shCell.j] = currentVal;
-
-        if (player == 'host')
-            newPossibleGame.players.p1.ammo -= 1;
-        else
-            newPossibleGame.players.p2.ammo -= 1;
+    if (player == 'host') newPossibleGame.players.p1.ammo = Math.max(0, newPossibleGame.players.p1.ammo - 1);
+    else newPossibleGame.players.p2.ammo = Math.max(0, newPossibleGame.players.p2.ammo - 1);
 
         const sameMemory = JSON.parse(JSON.stringify(MEMORY));
 
@@ -389,19 +392,20 @@ function evaluateAllMoves(player = 'bot') {
 
     walkableCells.forEach(walCell => {
         const newPossibleGame = JSON.parse(JSON.stringify(App.game));
+        const f = newPossibleGame.field;
         if (player == 'host') {
             newPossibleGame.players.p1.i = walCell.i;
             newPossibleGame.players.p1.j = walCell.j;
-            newPossibleGame.players.p1.isSquid = (App.game.field[walCell.i][walCell.j] == currentVal);
-            newPossibleGame.players.p1.lives -= (App.game.field[walCell.i][walCell.j] == -currentVal ? 1 : 0);
+            newPossibleGame.players.p1.isSquid = (f[walCell.i][walCell.j] == currentVal);
+            newPossibleGame.players.p1.lives -= (f[walCell.i][walCell.j] == -currentVal ? 1 : 0);
         } else {
             newPossibleGame.players.p2.i = walCell.i;
             newPossibleGame.players.p2.j = walCell.j;
-            newPossibleGame.players.p2.isSquid = (App.game.field[walCell.i][walCell.j] == currentVal);
-            newPossibleGame.players.p2.lives -= (App.game.field[walCell.i][walCell.j] == -currentVal ? 1 : 0);
+            newPossibleGame.players.p2.isSquid = (f[walCell.i][walCell.j] == currentVal);
+            newPossibleGame.players.p2.lives -= (f[walCell.i][walCell.j] == -currentVal ? 1 : 0);
         }
         const newPossibleMemory = JSON.parse(JSON.stringify(MEMORY));
-        updateLastPositions(newPossibleGame, newPossibleMemory);
+        // updateLastPositions(newPossibleGame, newPossibleMemory);
 
         allMoves.push({
             move: {

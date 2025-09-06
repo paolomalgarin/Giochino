@@ -394,6 +394,7 @@ async function playGame() {
                 await new Promise(r => setTimeout(r, 500));
 
                 makeMove(enemyMode, i, j, btn);
+                updateLastPositions(App.game, MEMORY);
 
                 drawGame();
                 AppLocal.myTurn = true;
@@ -426,7 +427,7 @@ async function playGame() {
                 App.game.winner = 'Host (arancione)';
             }
         }
-        
+
         await new Promise(r => setTimeout(r, 2000));
 
         const winMessage = document.getElementById('win-message');
