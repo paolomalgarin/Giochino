@@ -75,6 +75,14 @@ function resetGame() {
             cell.className = 'cell';
             cell.id = `cell${i}-${j}`;
             // cell.textContent = `${i}-${j}`;
+
+
+            const powerup = document.createElement('div');
+            powerup.className = 'powerup';
+            powerup.id = `powerup${i}-${j}`;
+            cell.appendChild(powerup);
+
+
             App.game.container.appendChild(cell);
             App.game.cells[i][j] = cell;
         }

@@ -12,7 +12,14 @@ const MEMORY = {
 
 // Funzione che ritorna un valore che indica chi è in vantaggio. 
 // Il valore è positivo per il bot (verde) e negativo per il giocatore (arancione)
-function evalField(game = JSON.parse(JSON.stringify(App.game)), memory = JSON.parse(JSON.stringify(MEMORY)), lastMove = 'bot') {
+function evalField(game = JSON.parse(JSON.stringify(App.game)), memory = JSON.parse(JSON.stringify(MEMORY)), lastMove = 'bot', depth = 0) {
+    const MAX_DEPTH = 2;
+
+    if (depth >= MAX_DEPTH) {
+        return quickHeuristic(game, memory); // definisci una valutazione veloce e deterministica
+    }
+
+
     // ⚠️lastMove indica chi HA FATTO l'ultima mossa⚠️
     let field = game.field;
     let botPlayer = game.players.p2;
@@ -25,7 +32,7 @@ function evalField(game = JSON.parse(JSON.stringify(App.game)), memory = JSON.pa
 
     if (Array.isArray(realPlayerPos)) {
         // realPlayer è un array di posizioni [{i,j}, ...]
-        let totalEvaluation = 0
+        let worst = Infinity;
         for (const pos of realPlayerPos) {
             // creiamo un nuovo gioco simulato per ogni posizione in cui il giocatore potrebbe essere e facciamo la media delle evaluation di ogniuno di quei games
             const newPossibleGame = JSON.parse(JSON.stringify(game));
@@ -37,10 +44,10 @@ function evalField(game = JSON.parse(JSON.stringify(App.game)), memory = JSON.pa
             updateLastPositions(newPossibleGame, newPossibleMemory);
 
 
-            let partialEvaluation = evalField(newPossibleGame, newPossibleMemory);
-            totalEvaluation += partialEvaluation;
+            let partialEvaluation = evalField(newPossibleGame, newPossibleMemory, 'player', depth + 1);
+            if (partialEvaluation < worst) worst = partialEvaluation;
         }
-        evaluation = totalEvaluation / realPlayerPos.length;
+        evaluation = worst;
     } else if (realPlayerPos && typeof realPlayerPos === 'object' && typeof realPlayerPos.i === 'number' && typeof realPlayerPos.j === 'number') {
         // realPlayerPos è una singola posizione {i,j}
         const pos = realPlayerPos;
@@ -182,8 +189,8 @@ function getRealPlayerPosition(game, memory) {
     let isPlayerInvisible = player.isSquid && field[player.i][player.j] == 1;
 
     if (isPlayerInvisible) {
-        console.log('getRealPlayerPosition: player considered invisible, returning possible cells from memory.lastPlayerPos', memory.lastPlayerPos);
-        return getPlayerMoovableCells(memory.lastPlayerPos.i, memory.lastPlayerPos.j);
+        // console.log('getRealPlayerPosition: player considered invisible, returning possible cells from memory.lastPlayerPos', memory.lastPlayerPos);
+        return getPlayerMoovableCells(memory.lastPlayerPos.i, memory.lastPlayerPos.j, 1, field);
     } else {
         memory.lastPlayerPos = { i: player.i, j: player.j };
         return memory.lastPlayerPos;
@@ -198,6 +205,11 @@ function updateLastPositions(game, memory) {
 
     let isPlayerInvisible = realPlayer.isSquid && field[realPlayer.i][realPlayer.j] == 1;
     let isBotInvisible = botPlayer.isSquid && field[botPlayer.i][botPlayer.j] == -1;
+
+    // log diagnostico (rimuovilo quando risolto)
+    console.log('updateLastPositions called. isPlayerInvisible=', isPlayerInvisible, 'isBotInvisible=', isBotInvisible,
+        'realPlayer.pos=', { i: realPlayer.i, j: realPlayer.j }, 'bot.pos=', { i: botPlayer.i, j: botPlayer.j },
+        'memory.before=', memory.lastPlayerPos);
 
     if (!isBotInvisible)
         memory.lastBotPos = { i: botPlayer.i, j: botPlayer.j }
@@ -229,7 +241,8 @@ function countAll(field) {
 // Usa getOrthogonalBlobIndices su ogni cella attorno a (i,j) (default MEMORY.lastPlayerPos)
 // Per ogni cella nel blob aggiunge anche le 8 adiacenti SOLO SE sono dello stesso valore 'val'; scarta duplicati con resultVisited.
 // Restituisce array di {i,j}
-function getPlayerMoovableCells(i, j, val = 1, field = App.game.field) {
+function getPlayerMoovableCells(i, j, val = 1, field) { // (field = App.game.field)
+    if (!field) throw new Error('getPlayerMoovableCells: missing field parameter');
     const N = SIZE;
     const NN = N * N;
 
@@ -363,8 +376,8 @@ function getAroundColorCells(i, j, val, field) {
 
 
 
-function evaluateAllMoves(player = 'bot') {
-    const currentPlayer = player == 'host' ? App.game.players.p1 : App.game.players.p2;
+function evaluateAllMoves(player = 'bot', game = App.game, memory = MEMORY) {
+    const currentPlayer = player == 'host' ? game.players.p1 : game.players.p2;
     const currentVal = player == 'host' ? 1 : -1;
 
     let shootableCells = currentPlayer.ammo > 0 ? getNearbyCells(currentPlayer.i, currentPlayer.j) : [];
@@ -373,12 +386,12 @@ function evaluateAllMoves(player = 'bot') {
     let allMoves = [];
 
     shootableCells.forEach(shCell => {
-        const newPossibleGame = JSON.parse(JSON.stringify(App.game));
+        const newPossibleGame = JSON.parse(JSON.stringify(game));
         newPossibleGame.field[shCell.i][shCell.j] = currentVal;
-    if (player == 'host') newPossibleGame.players.p1.ammo = Math.max(0, newPossibleGame.players.p1.ammo - 1);
-    else newPossibleGame.players.p2.ammo = Math.max(0, newPossibleGame.players.p2.ammo - 1);
+        if (player == 'host') newPossibleGame.players.p1.ammo = Math.max(0, newPossibleGame.players.p1.ammo - 1);
+        else newPossibleGame.players.p2.ammo = Math.max(0, newPossibleGame.players.p2.ammo - 1);
 
-        const sameMemory = JSON.parse(JSON.stringify(MEMORY));
+        const sameMemory = JSON.parse(JSON.stringify(memory));
 
         allMoves.push({
             move: {
@@ -391,7 +404,7 @@ function evaluateAllMoves(player = 'bot') {
     });
 
     walkableCells.forEach(walCell => {
-        const newPossibleGame = JSON.parse(JSON.stringify(App.game));
+        const newPossibleGame = JSON.parse(JSON.stringify(game));
         const f = newPossibleGame.field;
         if (player == 'host') {
             newPossibleGame.players.p1.i = walCell.i;
@@ -404,7 +417,7 @@ function evaluateAllMoves(player = 'bot') {
             newPossibleGame.players.p2.isSquid = (f[walCell.i][walCell.j] == currentVal);
             newPossibleGame.players.p2.lives -= (f[walCell.i][walCell.j] == -currentVal ? 1 : 0);
         }
-        const newPossibleMemory = JSON.parse(JSON.stringify(MEMORY));
+        const newPossibleMemory = JSON.parse(JSON.stringify(memory));
         // updateLastPositions(newPossibleGame, newPossibleMemory);
 
         allMoves.push({
@@ -430,7 +443,8 @@ function evaluateAllMoves(player = 'bot') {
 
 // findBestMove: valuta tutte le mosse legali del bot (senza modificare permanentemente App)
 function findBestMove() {
-    const allMoves = evaluateAllMoves('bot');
+    const memCopy = JSON.parse(JSON.stringify(MEMORY));
+    const allMoves = evaluateAllMoves('bot', App.game, memCopy);
 
     if (allMoves.length === 0) return null; // nessuna mossa disponibile
 

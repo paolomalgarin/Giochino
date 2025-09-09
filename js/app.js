@@ -21,6 +21,9 @@ const App = {
                 j: 0,
                 lives: 3,
                 ammo: 3,
+                powerups: {
+                    glasses: false,
+                },
             },
             p2: {
                 isSquid: false,
@@ -28,10 +31,24 @@ const App = {
                 j: SIZE - 1,
                 lives: 3,
                 ammo: 3,
+                powerups: {
+                    glasses: false,
+                },
+            },
+        },
+        powerups: {
+            glasses: {
+                i: -1,
+                j: -1,
+                spawnTurn: -1,
+                active: false,
+                activationTurn: -1,
+                duration: 4,
             },
         },
         maxAmmo: 3,
         running: false,
+        turn: 0,
     }
 };
 const AppLocal = {
@@ -247,6 +264,9 @@ function resetGame() {
                 j: 0,
                 lives: 3,
                 ammo: 3,
+                powerups: {
+                    glasses: false,
+                },
             },
             p2: {
                 isSquid: false,
@@ -254,10 +274,24 @@ function resetGame() {
                 j: SIZE - 1,
                 lives: 3,
                 ammo: 3,
+                powerups: {
+                    glasses: false,
+                },
+            },
+        },
+        powerups: {
+            glasses: {
+                i: -1,
+                j: -1,
+                spawnTurn: -1,
+                active: false,
+                activationTurn: -1,
+                duration: 4,
             },
         },
         maxAmmo: 3,
         running: true,
+        turn: 0,
     }
     App.game.players.p1.ammo = App.game.maxAmmo;
     App.game.players.p2.ammo = App.game.maxAmmo;
@@ -272,6 +306,14 @@ function resetGame() {
             cell.className = 'cell';
             cell.id = `cell${i}-${j}`;
             // cell.textContent = `${i}-${j}`;
+
+
+            const powerup = document.createElement('div');
+            powerup.className = 'powerup';
+            powerup.id = `powerup${i}-${j}`;
+            cell.appendChild(powerup);
+
+
             App.game.container.appendChild(cell);
             App.game.cells[i][j] = cell;
         }
@@ -282,6 +324,14 @@ function resetGame() {
     turn.className = '';
     turn.style.display = 'block';
 }
+
+
+function arePlayersInRange() {
+    const p1 = App.game.players.p1;
+    const p2 = App.game.players.p2;
+    return (Math.abs(p1.i - p2.i) <= 2) && (Math.abs(p1.j - p2.j) <= 2);
+}
+
 
 function drawGame() {
     const currentPlayer = App.mode === 'host' ? App.game.players.p1 : App.game.players.p2;
@@ -319,13 +369,21 @@ function drawGame() {
             if (i == App.game.players.p1.i && j == App.game.players.p1.j) {
                 App.game.cells[i][j].classList.add('player1');
                 if (App.game.players.p1.isSquid) {
+                    // il player1 (host) è uno squid
                     App.game.cells[i][j].classList.add('squid');
+
                     if (App.mode == 'guest' && App.game.field[i][j] == 1) {
-                        App.game.cells[i][j].classList.add('invisible');
+                        // il guest non deve vedere lo squid a meno che non abbia gli occhiali attivi e l'host sia in range allo stesso tempo
+                        if (App.game.players.p2.powerups.glasses && arePlayersInRange())
+                            App.game.cells[i][j].classList.remove('invisible');
+                        else
+                            App.game.cells[i][j].classList.add('invisible');
                     } else {
+                        // il guest può vedere l'avversario
                         App.game.cells[i][j].classList.remove('invisible');
                     }
                 } else {
+                    // il player1 (host) non è uno squid
                     App.game.cells[i][j].classList.remove('squid');
                     App.game.cells[i][j].classList.remove('invisible');
                 }
@@ -335,13 +393,19 @@ function drawGame() {
             if (i == App.game.players.p2.i && j == App.game.players.p2.j) {
                 App.game.cells[i][j].classList.add('player2');
                 if (App.game.players.p2.isSquid) {
+                    // il player2 (guest) è uno squid
                     App.game.cells[i][j].classList.add('squid');
                     if (App.mode == 'host' && App.game.field[i][j] == -1) {
-                        App.game.cells[i][j].classList.add('invisible');
+                        // l'host non deve vedere lo squid a meno che non abbia gli occhiali attivi e il guest sia in range allo stesso tempo
+                        if (App.game.players.p1.powerups.glasses && arePlayersInRange())
+                            App.game.cells[i][j].classList.remove('invisible');
+                        else
+                            App.game.cells[i][j].classList.add('invisible');
                     } else {
                         App.game.cells[i][j].classList.remove('invisible');
                     }
                 } else {
+                    // il player2 (guest) non è uno squid
                     App.game.cells[i][j].classList.remove('squid');
                     App.game.cells[i][j].classList.remove('invisible');
                 }
@@ -366,6 +430,28 @@ function drawGame() {
                 App.game.cells[i][j].classList.remove('shoot-and-walk');
                 App.game.cells[i][j].classList.remove('shootable');
             }
+
+
+            // gestisco i powerups
+            const powerups = App.game.powerups;
+            const currentTurn = App.game.turn;
+
+            // glasses (se sono attivi e la casella è quella in cui sono i glasses la considero)
+            if (powerups.glasses.active && (i === powerups.glasses.i && j === powerups.glasses.j)) {
+                document.getElementById(`powerup${i}-${j}`).classList.add('glasses');
+
+                // dopo 2 turni cambio la classe indicando che i glasses stanno per despawnare 
+                if (currentTurn - powerups.glasses.spawnTurn >= 2)
+                    document.getElementById(`powerup${i}-${j}`).classList.add('despawning');
+                else
+                    document.getElementById(`powerup${i}-${j}`).classList.remove('despawning');
+
+            } else {
+                document.getElementById(`powerup${i}-${j}`).classList.remove('glasses');
+                document.getElementById(`powerup${i}-${j}`).classList.remove('despawning');
+            }
+
+            // ...
         }
 
 
@@ -399,9 +485,9 @@ function manageHostMessages(e) {
     console.log("Host riceve:", e.data);
 
     const newApp = JSON.parse(e.data);
-    App.game.field = newApp.game.field;
-    App.game.players = newApp.game.players;
-    App.game.running = newApp.game.running;
+    const thisPcCells = App.game.cells;
+    App.game = newApp.game;
+    App.game.cells = thisPcCells;
 
     AppLocal.myTurn = true;
 
@@ -412,9 +498,9 @@ function manageGuestMessages(e) {
     console.log("Host riceve:", e.data);
 
     const newApp = JSON.parse(e.data);
-    App.game.field = newApp.game.field;
-    App.game.players = newApp.game.players;
-    App.game.running = newApp.game.running;
+    const thisPcCells = App.game.cells;
+    App.game = newApp.game;
+    App.game.cells = thisPcCells;
 
     AppLocal.myTurn = true;
 
@@ -560,6 +646,91 @@ function showHideMoves() {
 }
 
 
+function managePowerUps() {
+    const powerups = App.game.powerups;
+    const currentTurn = App.game.turn;
+    const { p1, p2 } = App.game.players;
+
+    // gestisco i glasses
+    if (powerups.glasses.active) {
+        // i glasses sono attivi -> devo eseguire il loro effetto
+
+        // controllo se un player ci passa sopra
+        if (p1.i === powerups.glasses.i && p1.j === powerups.glasses.j) {
+            p1.powerups.glasses = true;
+            powerups.glasses.i = -1;
+            powerups.glasses.j = -1;
+            powerups.glasses.activationTurn = currentTurn;
+        } else if (p2.i === powerups.glasses.i && p2.j === powerups.glasses.j) {
+            p2.powerups.glasses = true;
+            powerups.glasses.i = -1;
+            powerups.glasses.j = -1;
+            powerups.glasses.activationTurn = currentTurn;
+        }
+
+        // controllo se sono despawnati (dopo 2 turni)
+        if (currentTurn - powerups.glasses.activationTurn > powerups.glasses.duration && currentTurn - powerups.glasses.spawnTurn > powerups.glasses.duration) {
+            powerups.glasses.active = false;
+            p1.powerups.glasses = false;
+            p2.powerups.glasses = false;
+        }
+
+        // setto lo stile della roba che fa capire ai giocatori cosa sta succedendo
+        // p1
+        if (p1.powerups.glasses) {
+            const powerupIcon = document.getElementById('host-powerup-glasses');
+            powerupIcon.style.display = 'block';
+            powerupIcon.style.setProperty('--used-perc', ((currentTurn - powerups.glasses.activationTurn) / powerups.glasses.duration * 100) + '%');
+        } else
+            document.getElementById('host-powerup-glasses').style.display = 'none';
+        // p2
+        if (p2.powerups.glasses) {
+            const powerupIcon = document.getElementById('guest-powerup-glasses');
+            powerupIcon.style.display = 'block';
+            powerupIcon.style.setProperty('--used-perc', ((currentTurn - powerups.glasses.activationTurn) / powerups.glasses.duration * 100) + '%');
+        } else
+            document.getElementById('guest-powerup-glasses').style.display = 'none';
+    } else {
+        // i glasses non sono attivi -> vedo se devono spownare
+
+        // devo settare lo spawnTurn se sono disattivati e lo spawnTurn è passato
+        if (powerups.glasses.spawnTurn < currentTurn) {
+            powerups.glasses.spawnTurn = currentTurn + 20;
+        } else if (powerups.glasses.spawnTurn == currentTurn) {
+            // se il turno è quello di spawn li faccio spawnare
+            powerups.glasses.active = true;
+            let randN, randN2;
+
+            let maxSearches = 100, searches = 0; // just for safety
+            do {
+                randN = Math.floor(Math.random() * SIZE);  // questo decide dove sulla diagonale centrale
+                randN2 = Math.floor(Math.random() * 2) - 1;  // questo decide se un po sopra, sotto o esattamente sulla diagonale
+
+                if (randN === 7 && randN2 === -1)
+                    randN2 = 1;
+                else if (randN === 0 && randN2 === 1)
+                    randN2 = -1;
+
+                powerups.glasses.i = (SIZE - 1) - randN + randN2;
+                powerups.glasses.j = randN;
+
+                searches++;
+                // do while per evitare che spownino sui giocatori ma che si ferma dopo 100 iterazioni per sicurezza
+            } while (((p1.i === powerups.glasses.i && p1.j === powerups.glasses.j) || (p2.i === powerups.glasses.i && p2.j === powerups.glasses.j)) && searches < maxSearches);
+        }
+
+        // rimuovo il powerup a tutti i giocatori
+        p1.powerups.glasses = false;
+        p2.powerups.glasses = false;
+
+        // setto lo stile della roba che fa capire ai giocatori cosa sta succedendo
+        document.getElementById('host-powerup-glasses').style.display = 'none';
+        document.getElementById('guest-powerup-glasses').style.display = 'none';
+    }
+}
+
+
+
 // helper: attende il click/pointerdown su una cella e rimuove tutti i listener
 function waitForCellClick() {
     return new Promise(resolve => {
@@ -641,6 +812,14 @@ async function playGame() {
             const currentPlayer = App.mode === 'host' ? App.game.players.p1 : App.game.players.p2;
             const enemyPlayer = App.mode === 'host' ? App.game.players.p2 : App.game.players.p1;
 
+
+            // ============== qui gestisco i powerups ===============
+            managePowerUps();
+            drawGame();
+            // =========== fine gestione powerups =============
+
+
+
             // ======= qui entra il blocco che volevi =======
             // attendo che l'utente clicchi una cella libera
             const { i, j, btn } = await waitForCellClick();
@@ -691,10 +870,10 @@ async function playGame() {
                     App.game.players.p2.lives -= 1;
             }
 
-            drawGame();
-
             // disabilito il mio turno e ridisegno
             AppLocal.myTurn = false;
+            App.game.turn += 1;
+            managePowerUps();
             document.getElementById('turn').className = 'false';
             drawGame();
             // ======= fine del blocco =======
