@@ -45,6 +45,13 @@ const App = {
                 activationTurn: -1,
                 duration: 4,
             },
+            bomb: {
+                i: -1,
+                j: -1,
+                spawnTurn: -1,
+                active: false,
+                delay: 4,
+            },
         },
         maxAmmo: 3,
         running: false,
@@ -210,10 +217,10 @@ async function processAnswer(answerJSON) {
 function sendMessage(msg) {
     if (App.mode === 'host' && App.host?.dc?.readyState === "open") {
         App.host.dc.send(msg);
-        console.log("Host manda:", msg);
+        // console.log("Host manda:", msg);
     } else if (App.mode === 'guest' && App.guest?.dc?.readyState === "open") {
         App.guest.dc.send(msg);
-        console.log("Guest manda:", msg);
+        // console.log("Guest manda:", msg);
     } else {
         console.log("⚠️ DataChannel non è pronto per inviare messaggi");
     }
@@ -287,6 +294,13 @@ function resetGame() {
                 active: false,
                 activationTurn: -1,
                 duration: 4,
+            },
+            bomb: {
+                i: -1,
+                j: -1,
+                spawnTurn: -1,
+                active: false,
+                delay: 4,
             },
         },
         maxAmmo: 3,
@@ -438,7 +452,9 @@ function drawGame() {
 
             // glasses (se sono attivi e la casella è quella in cui sono i glasses la considero)
             if (powerups.glasses.active && (i === powerups.glasses.i && j === powerups.glasses.j)) {
+                console.log('glasses spawnati!');
                 document.getElementById(`powerup${i}-${j}`).classList.add('glasses');
+                console.log('classe aggiunta!');
 
                 // dopo 2 turni cambio la classe indicando che i glasses stanno per despawnare 
                 if (currentTurn - powerups.glasses.spawnTurn >= 2)
@@ -449,6 +465,39 @@ function drawGame() {
             } else {
                 document.getElementById(`powerup${i}-${j}`).classList.remove('glasses');
                 document.getElementById(`powerup${i}-${j}`).classList.remove('despawning');
+            }
+
+
+            // bomb (se è spownata e la casella è quella in cui c'è la bomba la considero)
+            if (powerups.bomb.active && (i === powerups.bomb.i && j === powerups.bomb.j)) {
+                document.getElementById(`powerup${i}-${j}`).classList.add('glasses');
+
+                // dopo ogni turno cambio la classe indicando che la bomba sta per spownare 
+                switch (currentTurn - powerups.bomb.spawnTurn) {
+                    case 0:
+                        document.getElementById(`powerup${i}-${j}`).className = 'powerup bomb frame1';
+                        break;
+                    case 1:
+                        document.getElementById(`powerup${i}-${j}`).className = 'powerup bomb frame2';
+                        break;
+                    case 2:
+                        document.getElementById(`powerup${i}-${j}`).className = 'powerup bomb frame3';
+                        break;
+                    case 3:
+                        document.getElementById(`powerup${i}-${j}`).className = 'powerup bomb frame4';
+                        break;
+
+                    default:
+                        console.error('siamo sul default nel metodo drawgame() quando graficheggio la bomba!');
+                        break;
+                }
+
+            } else {
+                document.getElementById(`powerup${i}-${j}`).classList.remove('bomb');
+                document.getElementById(`powerup${i}-${j}`).classList.remove('frame1');
+                document.getElementById(`powerup${i}-${j}`).classList.remove('frame2');
+                document.getElementById(`powerup${i}-${j}`).classList.remove('frame3');
+                document.getElementById(`powerup${i}-${j}`).classList.remove('frame4');
             }
 
             // ...
@@ -482,7 +531,7 @@ function drawGame() {
 
 
 function manageHostMessages(e) {
-    console.log("Host riceve:", e.data);
+    // console.log("Host riceve:", e.data);
 
     const newApp = JSON.parse(e.data);
     const thisPcCells = App.game.cells;
@@ -495,7 +544,7 @@ function manageHostMessages(e) {
 }
 
 function manageGuestMessages(e) {
-    console.log("Host riceve:", e.data);
+    // console.log("Guest riceve:", e.data);
 
     const newApp = JSON.parse(e.data);
     const thisPcCells = App.game.cells;
@@ -646,12 +695,90 @@ function showHideMoves() {
 }
 
 
+
+
+/**
+ * Restituisce tutte le celle candidate:
+ * - hanno almeno un vicino `valA` e almeno un vicino `valB`
+ * OR
+ * - (includeZeroOnly === true) tutti i vicini esistenti sono 0
+ *
+ * @param {number[][]} field - matrice [rows][cols]
+ * @param {object} opts - opzioni:
+ *    valA (default -1), valB (default 1),
+ *    includeZeroOnly (default true),
+ *    isOccupied: optional function (i,j) => boolean per escludere celle occupate
+ * @returns {Array<{i:number,j:number}>}
+ */
+function getAllCandidatesWithBothOrZeros(field, opts = {}) {
+    const { valA = -1, valB = 1, includeZeroOnly = true, isOccupied } = opts;
+    if (!Array.isArray(field) || field.length === 0) return [];
+
+    const rows = field.length;
+    const cols = field[0].length;
+    const candidates = [];
+
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+            if (typeof isOccupied === 'function' && isOccupied(i, j)) continue;
+
+            let foundA = false;
+            let foundB = false;
+            let allZero = true; // true finché non troviamo un vicino non-zero
+            let hasAnyNeighbor = false;
+
+            for (let di = -1; di <= 1; di++) {
+                for (let dj = -1; dj <= 1; dj++) {
+                    if (di === 0 && dj === 0) continue;
+                    const ni = i + di, nj = j + dj;
+                    if (ni < 0 || ni >= rows || nj < 0 || nj >= cols) continue;
+
+                    hasAnyNeighbor = true;
+                    const v = field[ni][nj];
+                    if (v === valA) foundA = true;
+                    if (v === valB) foundB = true;
+                    if (v !== 0) allZero = false;
+
+                    // early exit possibile
+                    if (foundA && foundB && !includeZeroOnly) break;
+                }
+                if (foundA && foundB && !includeZeroOnly) break;
+            }
+
+            const conditionBoth = foundA && foundB;
+            const conditionZerosOnly = includeZeroOnly && hasAnyNeighbor && allZero;
+
+            if (conditionBoth || conditionZerosOnly) candidates.push({ i, j });
+        }
+    }
+
+    return candidates;
+}
+
+/**
+ * Estrae a caso una cella valida usando getAllCandidatesWithBothOrZeros
+ * @param {number[][]} field
+ * @param {object} opts - vedi getAllCandidatesWithBothOrZeros
+ * @returns {{i:number,j:number}|null}
+ */
+function pickRandomFromCandidates(field, opts = {}) {
+    const cand = getAllCandidatesWithBothOrZeros(field, opts);
+    if (cand.length === 0) return null;
+    return cand[Math.floor(Math.random() * cand.length)];
+}
+
+
+
+
+
+
+
 function managePowerUps() {
     const powerups = App.game.powerups;
     const currentTurn = App.game.turn;
     const { p1, p2 } = App.game.players;
 
-    // gestisco i glasses
+    // ====================== gestisco i glasses ======================
     if (powerups.glasses.active) {
         // i glasses sono attivi -> devo eseguire il loro effetto
 
@@ -698,25 +825,33 @@ function managePowerUps() {
             powerups.glasses.spawnTurn = currentTurn + 20;
         } else if (powerups.glasses.spawnTurn == currentTurn) {
             // se il turno è quello di spawn li faccio spawnare
-            powerups.glasses.active = true;
-            let randN, randN2;
 
-            let maxSearches = 100, searches = 0; // just for safety
-            do {
-                randN = Math.floor(Math.random() * SIZE);  // questo decide dove sulla diagonale centrale
-                randN2 = Math.floor(Math.random() * 2) - 1;  // questo decide se un po sopra, sotto o esattamente sulla diagonale
 
-                if (randN === 7 && randN2 === -1)
-                    randN2 = 1;
-                else if (randN === 0 && randN2 === 1)
-                    randN2 = -1;
+            if (powerups.bomb.active) {
+                // se c'è la bomba gia attiva in gioco non faccio spawnare i glasses per evitare di creare troppo casino
+                powerups.glasses.spawnTurn = currentTurn + 2 + Math.floor(Math.random() * 3);
+                console.log('Bomba gia attiva, evito di spownare i glasses!');
+            } else {
+                powerups.glasses.active = true;
+                let randN, randN2;
 
-                powerups.glasses.i = (SIZE - 1) - randN + randN2;
-                powerups.glasses.j = randN;
+                let maxSearches = 100, searches = 0; // just for safety
+                do {
+                    randN = Math.floor(Math.random() * SIZE);  // questo decide dove sulla diagonale centrale
+                    randN2 = Math.floor(Math.random() * 2) - 1;  // questo decide se un po sopra, sotto o esattamente sulla diagonale
 
-                searches++;
-                // do while per evitare che spownino sui giocatori ma che si ferma dopo 100 iterazioni per sicurezza
-            } while (((p1.i === powerups.glasses.i && p1.j === powerups.glasses.j) || (p2.i === powerups.glasses.i && p2.j === powerups.glasses.j)) && searches < maxSearches);
+                    if (randN === 7 && randN2 === -1)
+                        randN2 = 1;
+                    else if (randN === 0 && randN2 === 1)
+                        randN2 = -1;
+
+                    powerups.glasses.i = (SIZE - 1) - randN + randN2;
+                    powerups.glasses.j = randN;
+
+                    searches++;
+                    // do while per evitare che spownino sui giocatori ma che si ferma dopo 100 iterazioni per sicurezza
+                } while (((p1.i === powerups.glasses.i && p1.j === powerups.glasses.j) || (p2.i === powerups.glasses.i && p2.j === powerups.glasses.j)) && searches < maxSearches);
+            }
         }
 
         // rimuovo il powerup a tutti i giocatori
@@ -726,6 +861,60 @@ function managePowerUps() {
         // setto lo stile della roba che fa capire ai giocatori cosa sta succedendo
         document.getElementById('host-powerup-glasses').style.display = 'none';
         document.getElementById('guest-powerup-glasses').style.display = 'none';
+    }
+
+
+
+
+    // ====================== gestisco le bombs ======================
+    if (powerups.bomb.active) {
+        // la bomb è attiva -> devo eseguire il suo effetto
+
+        // controllo se è ora di esplodere (dopo 4 turni)
+        if (currentTurn - powerups.bomb.spawnTurn >= powerups.bomb.delay) {
+            console.log('la bomba esplodee!');
+            // la faccio esplodere
+            for (let i = -1; i < 2; i += 2) {
+                if (powerups.bomb.i + i >= 0 && powerups.bomb.i + i < SIZE)
+                    App.game.field[powerups.bomb.i + i][powerups.bomb.j] = App.game.field[powerups.bomb.i][powerups.bomb.j]
+                if (powerups.bomb.j + i >= 0 && powerups.bomb.j + i < SIZE)
+                    App.game.field[powerups.bomb.i][powerups.bomb.j + i] = App.game.field[powerups.bomb.i][powerups.bomb.j]
+            }
+
+            // resetto la roba
+            powerups.bomb.active = false;
+            powerups.bomb.i = -1;
+            powerups.bomb.j = -1;
+        }
+    } else {
+        // la bomb non è attiva -> vedo se deve spownare
+
+        // devo settare lo spawnTurn se sono disattivati e lo spawnTurn è passato
+        if (powerups.bomb.spawnTurn < currentTurn) {
+            powerups.bomb.spawnTurn = currentTurn + 14 + Math.floor(Math.random() * 3);
+        } else if (powerups.bomb.spawnTurn == currentTurn) {
+            // se il turno è quello di spawn li faccio spawnare
+
+            if (powerups.glasses.active)
+                // se ci sono i glasses gia attivi in gioco non faccio spawnare la bomba per evitare di creare troppo casino
+                powerups.bomb.spawnTurn = currentTurn + 2 + Math.floor(Math.random() * 3);
+            else {
+                // prendo una cella "di confine" o con attorno solo celle bianche
+                const cell = pickRandomFromCandidates(App.game.field, { valA: -1, valB: 1, includeZeroOnly: true });
+
+                // se viene trovata (sicuro) mette la bomba li
+                if (cell) {
+                    powerups.bomb.active = true;
+                    powerups.bomb.spawnTurn = currentTurn;
+                    powerups.bomb.i = cell.i;
+                    powerups.bomb.j = cell.j;
+                } else {
+                    // aspetto le condizioni per spawnare una bomba
+                    console.log('cella non trovata per la bomba!', cell);
+                    powerups.bomb.spawnTurn = currentTurn + 14 + Math.floor(Math.random() * 3);
+                }
+            }
+        }
     }
 }
 

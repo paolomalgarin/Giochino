@@ -321,6 +321,24 @@ body {
                             background-image: url('../img/generic/icons/glasses/glasses-despawning.png');
                         }
                     }
+
+                    &.bomb {
+                        &.frame1 {
+                            background-image: url('../img/generic/icons/bomb/bomb1.png');
+                        }
+
+                        &.frame2 {
+                            background-image: url('../img/generic/icons/bomb/bomb2.png');
+                        }
+
+                        &.frame3 {
+                            background-image: url('../img/generic/icons/bomb/bomb3.png');
+                        }
+
+                        &.frame4 {
+                            background-image: url('../img/generic/icons/bomb/bomb4.png');
+                        }
+                    }
                 }
 
             }
