@@ -872,13 +872,24 @@ function managePowerUps() {
 
         // controllo se è ora di esplodere (dopo 4 turni)
         if (currentTurn - powerups.bomb.spawnTurn >= powerups.bomb.delay) {
-            console.log('la bomba esplodee!');
+            // console.log('la bomba esplodee!');
+            // prendo il player di cui controllare se l'esplosione lo hitta
+            const bombHittablePlayer = App.game.field[powerups.bomb.i][powerups.bomb.j] == -1 ? p1 : p2;
+
             // la faccio esplodere
             for (let i = -1; i < 2; i += 2) {
-                if (powerups.bomb.i + i >= 0 && powerups.bomb.i + i < SIZE)
-                    App.game.field[powerups.bomb.i + i][powerups.bomb.j] = App.game.field[powerups.bomb.i][powerups.bomb.j]
-                if (powerups.bomb.j + i >= 0 && powerups.bomb.j + i < SIZE)
-                    App.game.field[powerups.bomb.i][powerups.bomb.j + i] = App.game.field[powerups.bomb.i][powerups.bomb.j]
+                if (powerups.bomb.i + i >= 0 && powerups.bomb.i + i < SIZE) {
+                    App.game.field[powerups.bomb.i + i][powerups.bomb.j] = App.game.field[powerups.bomb.i][powerups.bomb.j];
+
+                    if (bombHittablePlayer.i === powerups.bomb.i + i && bombHittablePlayer.j === powerups.bomb.j)
+                        bombHittablePlayer.lives --;
+                }
+                if (powerups.bomb.j + i >= 0 && powerups.bomb.j + i < SIZE) {
+                    App.game.field[powerups.bomb.i][powerups.bomb.j + i] = App.game.field[powerups.bomb.i][powerups.bomb.j];
+
+                    if (bombHittablePlayer.i === powerups.bomb.i && bombHittablePlayer.j === powerups.bomb.j + i)
+                        bombHittablePlayer.lives --;
+                }
             }
 
             // resetto la roba
